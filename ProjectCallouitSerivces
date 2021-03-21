@@ -12,14 +12,26 @@ public class ProjectCalloutService {
         ];
         
         String sToken  = ServiceTokens__c.getValues('ProjectServiceToken').Token__c; //custom setting
-        String jsonInput  = '{\n'+
-            '"opportunityId":"'+ oppt.id+'",\n'+
-            '"opportunityName":"'+ oppt.Name+'",\n'+
-            '"accountName":"'+ oppt.Account.Name+'",\n'+
-            '"closeDate":"'+ String.valueOf(oppt.CloseDate).mid(0,10)+'",\n'+
-            '"Amount":"'+ oppt.Amount+'",\n}';
         
+		OpptyWrapper OpptyWrapper = new OpptyWrapper(oppt);       
+        String jsonInput = JSON.serialize(OpptyWrapper);
         System.enqueueJob(new QueueablePMSCall(sToken,jsonInput,oppt.id));
+    }
+    
+    public class OpptyWrapper{
+        public String opportunityId {get;set;}
+        public String opportunityName {get;set;}
+        public Date closeDate{get;set;}
+        public Integer amount{get;set;}
+        
+        public  OpptyWrapper(opportunity opp){
+            this.opportunityId = opp.id;
+            this.opportunityName = opp.Name;
+            this.closeDate = opp.CloseDate;
+            this.amount = (Integer)opp.Amount;
+        }
+        
+        
     }
     
     class QueueablePMSCall implements System.Queueable,Database.AllowsCallouts{
