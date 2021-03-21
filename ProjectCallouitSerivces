@@ -1,0 +1,66 @@
+public class ProjectCalloutService {
+    //Complete the implementation for business and callout logic
+    @InvocableMethod
+    public static void postOpportunityToPMS(List<Id> opptyId){
+        opportunity oppt = [
+            SELECT
+            Id,Name,Account.Name,CloseDate,Amount
+            FROM
+            opportunity
+            WHERE
+            id =:opptyId[0]
+        ];
+        
+        String sToken  = ServiceTokens__c.getValues('ProjectServiceToken').Token__c; //custom setting
+        String jsonInput  = '{\n'+
+            '"opportunityId":"'+ oppt.id+'",\n'+
+            '"opportunityName":"'+ oppt.Name+'",\n'+
+            '"accountName":"'+ oppt.Account.Name+'",\n'+
+            '"closeDate":"'+ String.valueOf(oppt.CloseDate).mid(0,10)+'",\n'+
+            '"Amount":"'+ oppt.Amount+'",\n}';
+        
+        System.enqueueJob(new QueueablePMSCall(sToken,jsonInput,oppt.id));
+    }
+    
+    class QueueablePMSCall implements System.Queueable,Database.AllowsCallouts{
+        private String sToken;
+        private String JsonInput;
+        private Id opptyId;
+        
+        public QueueablePMSCall(String sToken,String JsonInput ,Id opptyId){
+            this.sToken = sToken;
+            this.JsonInput =  JsonInput;
+            this.opptyId  = opptyId;
+            
+            
+            
+        }
+        public void execute(QueueableContext qc){
+            postToPMS(sToken,JsonInput,opptyId);
+        }
+    }
+    
+    @Future(Callout = true)
+    private static void postToPMS(String sToken,String JsonInput ,Id opptyId){
+        HttpRequest req = new HttpRequest();
+        req.setEndpoint('callout:ProjectService'); //Name Credentials
+        req.setMethod('POST');
+        req.setHeader('token', sToken);
+        req.setHeader('Content-Type','Application/json;charset-UTF-8');
+        req.setBody(JsonInput);
+        
+        HTTP http =  new HTTP();
+        HttpResponse res  = Http.send(req);
+        
+        opportunity oppty = new opportunity(id  = opptyId);
+        if(res.getStatusCode() == 201){
+            oppty.StageName = 'Submitted Project';
+        }else{
+            oppty.StageName = 'Resubmitted Project';
+        }
+        update oppty;
+    }
+    
+    
+    
+}
