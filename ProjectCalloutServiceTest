@@ -1,0 +1,104 @@
+@isTest
+private class ProjectCalloutServiceTest {
+ 
+    @TestSetup
+    public static void testingData(){
+        ServiceTokens__c sToken = new ServiceTokens__c();
+        sToken.Name = 'ProjectServiceToken';
+        sToken.Token__c = 'carcatdog';
+        insert sToken;
+        
+        
+        //Opportunity n-1
+        Opportunity oppty1 = new Opportunity();
+        oppty1.Name  = 'test1';
+        oppty1.Type  = 'New Project';
+        oppty1.Amount = 100;
+        oppty1.CloseDate = Date.today();
+        oppty1.StageName = 'Submitted Project';
+        insert oppty1;
+        
+        //Opportunity n-2
+        Opportunity oppty2 = new Opportunity();
+        oppty2.Name  = 'test2';
+        oppty2.Type  = 'New Project';
+        oppty2.Amount = 100;
+        oppty2.CloseDate = Date.today();
+        oppty2.StageName = 'Resubmitted Project';
+        insert oppty2;
+        
+    }
+    
+    @isTest
+    public static void testOK(){
+        Opportunity oppty = [
+            SELECT
+            Id,Name
+            FROM
+            Opportunity
+            WHERE
+            Name  = 'test1'
+        ];
+        
+        List<Id> opptyList = new List<Id>();
+        opptyList.add(oppty.id);
+        TEST.setMock(HttpCalloutMock.class, new ProjectCalloutServiceMock());
+        TEST.startTest();
+        ProjectCalloutService.postOpportunityToPMS(opptyList);
+        TEST.stopTest();
+        
+        List<Opportunity> updatedopptys = [
+            SELECT
+            Id,Name,StageName
+            FROM
+            Opportunity
+            WHERE
+            Name  = 'test1'
+        ]; 
+        System.assertEquals('Submitted Project', updatedopptys[0].StageName);
+    }
+    
+     @isTest
+    public static void testFailure(){
+        Opportunity oppty = [
+            SELECT
+            Id,Name
+            FROM
+            Opportunity
+            WHERE
+            Name  = 'test2'
+        ];
+        
+        List<Id> opptyList = new List<Id>();
+        opptyList.add(oppty.id);
+        TEST.setMock(HttpCalloutMock.class, new ProjectCalloutServiceMockFailure());
+        TEST.startTest();
+        ProjectCalloutService.postOpportunityToPMS(opptyList);
+        TEST.stopTest();
+        
+        List<Opportunity> updatedopptys = [
+            SELECT
+            Id,Name,StageName
+            FROM
+            Opportunity
+            WHERE
+            Name  = 'test2'
+        ]; 
+        System.assertEquals('Resubmitted Project', updatedopptys[0].StageName);
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+}
