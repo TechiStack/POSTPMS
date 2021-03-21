@@ -1,0 +1,57 @@
+@isTest
+private class ProjectRESTServiceTest {
+  
+    @testSetup
+    public static void createdData(){
+        Opportunity opt = new Opportunity();
+        opt.Name  = 'test';
+        opt.DeliveryInstallationStatus__c = 'In Progress';
+        opt.CloseDate = Date.today();
+        opt.StageName = 'Submitted Project';
+        insert opt;
+        
+        Project__c project = new Project__c();
+        project.Name  = 'testpro';
+        project.Opportunity__c  = opt.id;
+        project.Start_Date__c = date.today();
+        project.End_Date__c = date.today().addDays(1);
+        project.Status__c  = 'Running';
+        project.ProjectRef__c = 'prjref';
+        insert project;
+    }
+    
+    @isTest
+    public static void ProjectRESTServiceTest(){
+        Project__c project = [
+            SELECT
+            ID
+            FROM
+            Project__c
+        ];
+        
+        TEST.startTest();
+        
+        
+        Opportunity opt  = [
+            SELECT
+            Id
+            FROM
+            Opportunity
+        ];
+        String returnMessage = ProjectRESTService.postprojectData(
+            'ProjectRef', 
+            'ProjectName', 
+            opt.id, 
+            date.today(), 
+            date.today().addDays(1), 
+            100, 
+            'Running'
+        );
+        TEST.stopTest();
+        SYSTEM.assertEquals('OK', returnMessage);
+    }
+    
+    
+    
+    
+}
